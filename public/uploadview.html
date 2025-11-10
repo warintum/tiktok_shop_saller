@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiwai Tiktok Order Management</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap">
+    <!-- Add Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Add Boxicons -->
+    <link href="https://unpkg.com/boxicons@2.1.1/css/boxicons.min.css" rel="stylesheet">
+    <!-- Add Custom CSS -->
+    <link href="styles.css" rel="stylesheet">
+    <script>
+        async function checkAuth() {
+            const response = await fetch('/api/check-auth', { credentials: 'include' });
+            const data = await response.json();
+    
+            if (!data.isLoggedIn) {
+                window.location.href = 'login.html';
+            }
+        }
+    
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+    
+</head>
+
+<body>
+    <!-- Navbar Section -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><img src="img/bxl--tiktok.png" alt="icon" height="30" style="padding-bottom: 5px;" /> Order Management</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">ดูประวัติการขาย</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="upload.html">อัพโหลดและส่งข้อมูล</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="uploadview.html">ดูข้อมูลใน AS400</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">ตั้งค่า</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">ออกจากระบบ</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h3><i class='bx bx-file'></i> ข้อมูลใน AS400</h3>
+
+        <!-- Table Section -->
+        <div class="table-responsive">
+            <table id="orderTable" class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th><i class='bx bx-id-card'></i> OHBIL</th>
+                        <th><i class='bx bx-calendar'></i> OHPMD</th>
+                        <th><i class='bx bx-user'></i> OHCNM</th>
+                        <th><i class='bx bx-phone'></i> OHTEL</th>
+                        <th><i class='bx bx-location-plus'></i> OHAD1</th>
+                        <th><i class='bx bx-money'></i> OHTAM</th>
+                        <th><i class='bx bx-discount'></i> OHDAM</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchOrders();
+        });
+
+        
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST', // เปลี่ยนเป็น POST เพื่อความปลอดภัย
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include' // ถ้าใช้ cookies ในการทำงานร่วมกัน
+                });
+
+                if (response.ok) {
+                    window.location.href = 'login.html'; // นำผู้ใช้ไปยังหน้า login เมื่อ logout สำเร็จ
+                } else {
+                    // จัดการกับกรณี response status code ไม่ใช่ 200 OK
+                    document.getElementById('error').textContent = 'Failed to log out. Please try again.';
+                    document.getElementById('error').style.display = 'block';
+                }
+            } catch (error) {
+                // จัดการกับข้อผิดพลาดที่เกิดขึ้นจาก fetch
+                document.getElementById('error').textContent = 'An unexpected error occurred. Please try again later.';
+                document.getElementById('error').style.display = 'block';
+                console.error('Logout error:', error);
+            }
+        }
+
+
+        async function fetchOrders() {
+            try {
+                const response = await fetch('/api/uploadview');
+                const orders = await response.json();
+
+                const tbody = document.getElementById('orderTable').querySelector('tbody');
+                tbody.innerHTML = '';
+                console.log('orders response: ', orders)
+                orders.forEach(order => {
+                    const row = `
+                        <tr>
+                            <td>${order.OHBIL}</td>
+                            <td>${order.OHPMD}</td>
+                            <td>${order.OHCNM}</td>
+                            <td>${order.OHTEL}</td>
+                            <td>${order.OHAD1}</td>
+                            <td>${order.OHTAM}</td>
+                            <td>${order.OHDAM}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+    </script>
+    <!-- Add Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

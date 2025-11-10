@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiwai Tiktok Order Management</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap">
+    <!-- Add Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Add Boxicons -->
+    <link href="https://unpkg.com/boxicons@2.1.1/css/boxicons.min.css" rel="stylesheet">
+    <!-- Add Custom CSS -->
+    <link href="styles.css" rel="stylesheet">
+    <script>
+        async function checkAuth() {
+            const response = await fetch('/api/check-auth', { credentials: 'include' });
+            const data = await response.json();
+    
+            if (!data.isLoggedIn) {
+                window.location.href = 'login.html';
+            }
+        }
+    
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+    
+</head>
+
+<body>
+    <!-- Navbar Section -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><img src="img/bxl--tiktok.png" alt="icon" height="30" style="padding-bottom: 5px;" /> Order Management</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">ดูประวัติการขาย</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="upload.html">อัพโหลดและส่งข้อมูล</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="uploadview.html">ดูข้อมูลใน AS400</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">ตั้งค่า</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">ออกจากระบบ</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+
+    <div class="container">
+        <h3><i class='bx bx-upload'></i> ส่งรายการขายเข้า AS400</h3>
+
+        <!-- Upload CSV Section -->
+        <div class="row justify-content-end">
+            <div class="col-md-3 upload-bar">
+                <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" class="form-control mb-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="clearDataCheckbox">
+                    <label class="form-check-label" for="clearDataCheckbox">
+                        ลบข้อมูลเดิมก่อนอัพโหลด
+                    </label>
+                </div>
+                <button class="btn btn-upload w-100" onclick="uploadFile()">
+                    <i class='bx bx-upload'></i> เตรียมข้อมูลขายจาก TikTok
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="row justify-content-between mb-3 ">
+             <div class="col-md-10 filter-bar">
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-light w-120" data-bs-toggle="modal" data-bs-target="#fieldSelectionModal">
+                    <i class='bx bx-cog'></i> ฟิลด์
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="table-responsive">
+            <table id="orderTable" class="table table-bordered">
+                <thead>
+                    <tr id="tableHeader">
+                        <th data-field="created_time">วันที่สั่งซื้อ</th>
+                        <th data-field="buyer_username">ชื่อผู้ซื้อ</th>
+                        <th data-field="order_id">หมายเลขคำสั่งซื้อ</th>
+                        <th data-field="order_status">สถานะคำสั่งซื้อ</th>
+                        <th data-field="sku_id">รหัส SKU</th>
+                        <th data-field="seller_sku">รหัส SKU ผู้ขาย</th>
+                        <th data-field="product_name">ชื่อสินค้า</th>
+                        <th data-field="quantity">จำนวน</th>
+                        <th data-field="sku_unit_original_price">ราคาต่อหน่วย</th>
+                        <th data-field="sku_seller_discount">ส่วนลดจากผู้ขาย</th>
+                        <th data-field="sku_subtotal_after_discount">ยอดรวมหลังหักส่วนลด</th>
+                        <th data-field="shipping_provider_name">ชื่อผู้ให้บริการจัดส่ง</th>
+                        <th data-field="payment_method">วิธีการชำระเงิน</th>
+                        <th data-field="detail_address">ที่อยู่</th>
+                        <th data-field="province">จังหวัด</th>
+                        <th data-field="zipcode">รหัสไปรษณีย์</th>
+                        <th data-field="paid_time">เวลาที่ชำระเงิน</th>
+                        <th data-field="rts_time">เวลาพร้อมจัดส่ง</th>
+                        <th data-field="shipped_time">เวลาในการจัดส่ง</th>
+                        <th data-field="delivered_time">เวลาที่ส่งถึง</th>
+                        <th data-field="uploaddate">วันที่อัปโหลด</th>
+                        <th data-field="getflg">สถานะการดึงข้อมูล</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        
+        
+        <div class="row justify-content-end">
+            <div class="col-md-3 upload-bar">
+                    <label class="form-label-mini ms-2">
+                        * ถ้า Zipcode ไม่ถูกต้องระบบจะปรับค่าเป็น 00000
+                    </label>
+            </div>
+        </div>
+
+        <!-- Pagination Section -->
+        <div class="pagination">
+            <button id="prevButton" class="btn btn-outline-secondary" onclick="previousPage()" disabled>Previous</button>
+            <button id="nextButton" class="btn btn-outline-secondary" onclick="nextPage()" disabled>Next</button>
+        </div>
+
+        
+        <!-- Upload AS400 -->
+        <div class="row justify-content-end mt-4 mb-5">
+            <div class="col-md-3 upload-bar">
+                <div class="mt-2 ms-2">
+                    <label class="form-label-red">
+                        ** ตรวจความถูกต้องก่อนส่งเข้า AS400 **
+                    </label>
+                </div>
+                <!--<button class="btn btn-upload w-100" onclick="testAS400Connection()">
+                    <i class='bx bx-server'></i> ทดสอบการเชื่อมต่อกับ AS400
+                  </button>-->
+                  <button class="btn btn-upload w-100" onclick="triggerCSharpApp()">
+                    <i class='bx bx-server'></i> ส่งข้อมูลไปยัง AS400
+                  </button>
+                  <!-- <div class="mt-2 ms-2">
+                  <button class="btn btn-primary" onclick="sendDataToAS400()">
+                    ส่งข้อมูลไปยัง AS400
+                  </button>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Field Selection -->
+    <div class="modal fade" id="fieldSelectionModal" tabindex="-1" aria-labelledby="fieldSelectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fieldSelectionModalLabel">Select Fields to Display</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="fieldSelectionForm">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="created_time" id="fieldCreatedTime">
+                            <label class="form-check-label" for="fieldCreatedTime">
+                                วันที่สั่งซื้อ
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="buyer_username" id="fieldBuyerUsername">
+                            <label class="form-check-label" for="fieldBuyerUsername">
+                                ชื่อผู้ซื้อ
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="order_id" id="fieldOrderId">
+                            <label class="form-check-label" for="fieldOrderId">
+                                หมายเลขคำสั่งซื้อ
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="order_status" id="fieldOrderStatus">
+                            <label class="form-check-label" for="fieldOrderStatus">
+                                สถานะคำสั่งซื้อ
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="sku_id" id="fieldSkuId">
+                            <label class="form-check-label" for="fieldSkuId">
+                                รหัส SKU
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="seller_sku" id="fieldSellerSku">
+                            <label class="form-check-label" for="fieldSellerSku">
+                                รหัส SKU ผู้ขาย
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="product_name" id="fieldProductName">
+                            <label class="form-check-label" for="fieldProductName">
+                                ชื่อสินค้า
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="quantity" id="fieldQuantity">
+                            <label class="form-check-label" for="fieldQuantity">
+                                จำนวน
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="sku_unit_original_price" id="fieldSkuUnitOriginalPrice">
+                            <label class="form-check-label" for="fieldSkuUnitOriginalPrice">
+                                ราคาต่อหน่วย
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="sku_seller_discount" id="fieldSkuSellerDiscount">
+                            <label class="form-check-label" for="fieldSkuSellerDiscount">
+                                ส่วนลดจากผู้ขาย
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="sku_subtotal_after_discount" id="fieldSkuSubtotalAfterDiscount">
+                            <label class="form-check-label" for="fieldSkuSubtotalAfterDiscount">
+                                ยอดรวมหลังหักส่วนลด
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="shipping_provider_name" id="fieldShippingProviderName">
+                            <label class="form-check-label" for="fieldShippingProviderName">
+                                ชื่อผู้ให้บริการจัดส่ง
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="payment_method" id="fieldPaymentMethod">
+                            <label class="form-check-label" for="fieldPaymentMethod">
+                                วิธีการชำระเงิน
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="detail_address" id="fieldDetailAddress">
+                            <label class="form-check-label" for="fieldDetailAddress">
+                                ที่อยู่
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="province" id="fieldProvince">
+                            <label class="form-check-label" for="fieldProvince">
+                                จังหวัด
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="zipcode" id="fieldZipcode">
+                            <label class="form-check-label" for="fieldZipcode">
+                                รหัสไปรษณีย์
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="paid_time" id="fieldPaidTime">
+                            <label class="form-check-label" for="fieldPaidTime">
+                                เวลาที่ชำระเงิน
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="rts_time" id="fieldRtsTime">
+                            <label class="form-check-label" for="fieldRtsTime">
+                                เวลาพร้อมจัดส่ง
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="shipped_time" id="fieldShippedTime">
+                            <label class="form-check-label" for="fieldShippedTime">
+                                เวลาในการจัดส่ง
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="delivered_time" id="fieldDeliveredTime">
+                            <label class="form-check-label" for="fieldDeliveredTime">
+                                เวลาที่ส่งถึง
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="uploaddate" id="fieldUploadDate">
+                            <label class="form-check-label" for="fieldUploadDate">
+                                วันที่อัปโหลด
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="getflg" id="fieldGetFlg">
+                            <label class="form-check-label" for="fieldGetFlg">
+                                สถานะการดึงข้อมูล
+                            </label>
+                        </div>
+                    </form>
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="applyFieldSelection()">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Order Details -->
+<div class="modal fade" id="editOrderModal" tabindex="-1" aria-labelledby="editOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editOrderModalLabel">แก้ไขข้อมูลคำสั่งซื้อ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editOrderForm">
+                    <div class="mb-2">
+                        <label for="editCreatedTime" class="form-label mb-0">วันที่สั่งซื้อ</label>
+                        <input type="text" class="form-control" id="editCreatedTime" readonly>
+                    </div>
+                    <div class="mb-2">
+                        <label for="editBuyerUsername" class="form-label mb-0">ชื่อผู้ซื้อ</label>
+                        <input type="text" class="form-control" id="editBuyerUsername">
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label for="editOrderId" class="form-label mb-0">หมายเลขคำสั่งซื้อ</label>
+                            <input type="text" class="form-control" id="editOrderId" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editOrderStatus" class="form-label mb-0">สถานะคำสั่งซื้อ</label>
+                            <input type="text" class="form-control" id="editOrderStatus" readonly>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label for="editSellerSku" class="form-label mb-0">รหัส SKU ผู้ขาย</label>
+                            <input type="text" class="form-control" id="editSellerSku">
+                        </div>
+                        <div class="col-md-8">
+                            <label for="editProductName" class="form-label mb-0">ชื่อสินค้า</label>
+                            <input type="text" class="form-control" id="editProductName">
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label for="editQuantity" class="form-label mb-0">จำนวน</label>
+                            <input type="number" class="form-control" id="editQuantity">
+                        </div>
+                        <div class="col-md-8">
+                            <label for="editSkuUnitOriginalPrice" class="form-label mb-0">ราคาต่อหน่วย</label>
+                            <input type="text" class="form-control" id="editSkuUnitOriginalPrice">
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label for="editSkuSellerDiscount" class="form-label mb-0">ส่วนลดจากผู้ขาย</label>
+                            <input type="text" class="form-control" id="editSkuSellerDiscount">
+                        </div>
+                        <div class="col-md-8">
+                            <label for="editSkuSubtotalAfterDiscount" class="form-label mb-0">ยอดรวมหลังหักส่วนลด</label>
+                            <input type="text" class="form-control" id="editSkuSubtotalAfterDiscount">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label for="editDetailAddress" class="form-label mb-0">ที่อยู่</label>
+                        <input type="text" class="form-control" id="editDetailAddress">
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label for="editZipcode" class="form-label mb-0">รหัสไปรษณีย์</label>
+                            <input type="text" class="form-control" id="editZipcode">
+                        </div>
+                        <div class="col-md-8">
+                            <label for="editProvince" class="form-label mb-0">จังหวัด</label>
+                            <input type="text" class="form-control" id="editProvince">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-primary" onclick="saveOrderChanges()">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <script>
+        let currentPage = 1;
+
+        //ให้มีค่าเป็นวันที่ 1 ของเดือนปัจจุบัน
+        const firstDayOfMonth = new Date();
+        firstDayOfMonth.setDate(1);
+        const firstDayFormatted = firstDayOfMonth.toISOString().split('T')[0];
+        console.log('firstDayFormatted :', firstDayFormatted);
+
+        // Set default dates to today's date in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0];
+        //document.getElementById('startDate').value = firstDayFormatted;
+        //document.getElementById('endDate').value = today;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFieldSelection(); // โหลดฟิลด์ที่เลือกเมื่อหน้าเว็บโหลดเสร็จ
+        });
+
+        
+        let hasErrors = false; // สถานะการตรวจสอบข้อผิดพลาด
+        let hasData = false; // สถานะการมีข้อมูลในตาราง
+        let selectedOrderId = null;
+        let selectedId = null;
+        let selectedRow = null;
+
+        async function fetchOrders() {
+            const today = new Date().toISOString().split('T')[0];
+            const response = await fetch(`/api/orderstmp?startDate=2024-01-01 00:00:00&endDate=${today} 23:59:59&sortBy=Upload Date&page=${currentPage}`);
+            const orders = await response.json();
+
+            const tbody = document.getElementById('orderTable').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            // ตรวจสอบจำนวนรายการที่ได้รับมา หากน้อยกว่า 20 แสดงว่าไม่มีหน้าถัดไป
+            const hasNextPage = orders.length === 20;
+
+
+            orders.forEach(order => {
+                const sellerSku = order.seller_sku || '';
+                const zipcode = order.zipcode || '';
+
+                // ตรวจสอบข้อผิดพลาดใน seller_sku และ zipcode
+                const hasError = 
+                    !sellerSku || !/\((PK|BX|CN|KG)\)/.test(sellerSku);
+                    //!sellerSku || !/\([A-Z]{2}\)/.test(sellerSku) || 
+                    //!/^\d{5}$/.test(zipcode);
+
+                if (hasError) {
+                    hasErrors = true;
+                }
+                hasData = true; // มีข้อมูลในตาราง
+
+                const row = document.createElement('tr');
+
+                // กำหนดสีข้อความเป็นสีแดงถ้ามีข้อผิดพลาด
+              //  const textColor = hasError ? '#f9a7a9' : 'transparent';
+                const textColor = hasError ? 'red' : 'black';
+
+                row.innerHTML = `
+                    ${document.querySelector('#tableHeader [data-field="created_time"]').style.display !== 'none' ? `<td data-field="created_time"  style="color:${textColor};">${new Date(order.created_time).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="buyer_username"]').style.display !== 'none' ? `<td data-field="buyer_username"  style="color:${textColor};">${order.buyer_username}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="order_id"]').style.display !== 'none' ? `<td data-field="order_id"  style="color:${textColor};">${order.order_id}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="order_status"]').style.display !== 'none' ? `<td data-field="order_status"  style="color:${textColor};">${order.order_status}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="sku_id"]').style.display !== 'none' ? `<td data-field="sku_id"  style="color:${textColor};">${order.sku_id}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="seller_sku"]').style.display !== 'none' ? `<td data-field="seller_sku"  style="color:${textColor};">${order.seller_sku}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="product_name"]').style.display !== 'none' ? `<td data-field="product_name"  style="color:${textColor};">${order.product_name}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="quantity"]').style.display !== 'none' ? `<td data-field="quantity"  style="color:${textColor};">${order.quantity}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="sku_unit_original_price"]').style.display !== 'none' ? `<td data-field="sku_unit_original_price"  style="color:${textColor};">${order.sku_unit_original_price}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="sku_seller_discount"]').style.display !== 'none' ? `<td data-field="sku_seller_discount"  style="color:${textColor};">${order.sku_seller_discount}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="sku_subtotal_after_discount"]').style.display !== 'none' ? `<td data-field="sku_subtotal_after_discount"  style="color:${textColor};">${order.sku_subtotal_after_discount}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="shipping_provider_name"]').style.display !== 'none' ? `<td data-field="shipping_provider_name"  style="color:${textColor};">${order.shipping_provider_name}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="payment_method"]').style.display !== 'none' ? `<td data-field="payment_method"  style="color:${textColor};">${order.payment_method}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="detail_address"]').style.display !== 'none' ? `<td data-field="detail_address"  style="color:${textColor};">${order.detail_address}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="province"]').style.display !== 'none' ? `<td data-field="province"  style="color:${textColor};">${order.province}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="zipcode"]').style.display !== 'none' ? `<td data-field="zipcode"  style="color:${textColor};">${order.zipcode}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="paid_time"]').style.display !== 'none' ? `<td data-field="paid_time"  style="color:${textColor};">${new Date(order.paid_time).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="rts_time"]').style.display !== 'none' ? `<td data-field="rts_time"  style="color:${textColor};">${new Date(order.rts_time).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="shipped_time"]').style.display !== 'none' ? `<td data-field="shipped_time"  style="color:${textColor};">${new Date(order.shipped_time).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="delivered_time"]').style.display !== 'none' ? `<td data-field="delivered_time"  style="color:${textColor};">${new Date(order.delivered_time).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="uploaddate"]').style.display !== 'none' ? `<td data-field="uploaddate"  style="color:${textColor};">${new Date(order.uploaddate).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` : ''}
+                    ${document.querySelector('#tableHeader [data-field="getflg"]').style.display !== 'none' ? `<td data-field="getflg"  style="color:${textColor};">${order.getflg}</td>` : ''}
+                `;
+
+
+                row.addEventListener('click', () => showEditOrderModal(order, row)); // เพิ่ม event listener
+
+                // เพิ่ม row ไปยัง tbody
+                tbody.appendChild(row);
+            });
+
+
+
+            // จัดการปุ่ม Next
+            const nextButton = document.getElementById('nextButton');
+            if (hasNextPage) {
+                nextButton.disabled = false;
+            } else {
+                nextButton.disabled = true;
+            }
+
+            // จัดการปุ่ม Previous
+            const prevButton = document.getElementById('prevButton');
+            if (currentPage > 1) {
+                prevButton.disabled = false;
+            } else {
+                prevButton.disabled = true;
+            }
+        }
+
+
+        function applyFieldSelection() {
+            const checkboxes = document.querySelectorAll('#fieldSelectionForm input[type="checkbox"]');
+            const tableHeader = document.getElementById('tableHeader').children;
+
+            const selectedFields = []; // สร้าง array สำหรับเก็บฟิลด์ที่เลือก
+
+            checkboxes.forEach((checkbox, index) => {
+                tableHeader[index].style.display = checkbox.checked ? '' : 'none';
+
+                if (checkbox.checked) {
+                    selectedFields.push(checkbox.value); // เก็บชื่อฟิลด์ที่เลือกไว้
+                }
+            });
+
+            // บันทึกการเลือกฟิลด์ไว้ใน localStorage
+            localStorage.setItem('selectedFieldsUpload', JSON.stringify(selectedFields));
+
+            fetchOrders();
+            document.querySelector('.btn-close').click(); // ปิด modal หลังจาก apply
+        }
+
+        function loadFieldSelection() {
+            const selectedFields = JSON.parse(localStorage.getItem('selectedFieldsUpload')) || ['created_time', 'buyer_username', 'order_id', 'order_status', 'seller_sku', 'product_name', 'quantity', 'sku_unit_original_price', 'sku_seller_discount', 'sku_subtotal_after_discount', 'payment_method', 'detail_address', 'province', 'zipcode', 'shipped_time', 'uploaddate'];
+
+            console.log('selectedFieldsUpload : ',selectedFields );
+
+            const checkboxes = document.querySelectorAll('#fieldSelectionForm input[type="checkbox"]');
+            const tableHeader = document.getElementById('tableHeader').children;
+
+            checkboxes.forEach((checkbox, index) => {
+                const isChecked = selectedFields.includes(checkbox.value);
+                checkbox.checked = isChecked;
+                tableHeader[index].style.display = isChecked ? '' : 'none';
+            });
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                fetchOrders(true);
+            }
+        }
+
+        function nextPage() {
+            currentPage++;
+            fetchOrders(true);
+        }
+
+        
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST', // เปลี่ยนเป็น POST เพื่อความปลอดภัย
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include' // ถ้าใช้ cookies ในการทำงานร่วมกัน
+                });
+
+                if (response.ok) {
+                    window.location.href = 'login.html'; // นำผู้ใช้ไปยังหน้า login เมื่อ logout สำเร็จ
+                } else {
+                    // จัดการกับกรณี response status code ไม่ใช่ 200 OK
+                    document.getElementById('error').textContent = 'Failed to log out. Please try again.';
+                    document.getElementById('error').style.display = 'block';
+                }
+            } catch (error) {
+                // จัดการกับข้อผิดพลาดที่เกิดขึ้นจาก fetch
+                document.getElementById('error').textContent = 'An unexpected error occurred. Please try again later.';
+                document.getElementById('error').style.display = 'block';
+                console.error('Logout error:', error);
+            }
+        }
+
+
+        async function uploadFile() {  // เปลี่ยนชื่อจาก uploadCSV เป็น uploadFile
+            const fileInput = document.getElementById('fileInput'); // เปลี่ยน ID ให้เป็นกลาง
+            const file = fileInput.files[0];
+            const clearData = document.getElementById('clearDataCheckbox').checked; // รับค่าจาก checkbox
+
+            // ตรวจสอบว่าได้เลือกไฟล์หรือยัง
+            if (!file) {
+                showNotificationAlert('กรุณาเลือกไฟล์ก่อนทำการอัพโหลด');
+                return;
+            }
+
+            // ตรวจสอบนามสกุลไฟล์ว่าถูกต้องหรือไม่ (ต้องเป็น .csv, .xlsx, หรือ .xls)
+            const allowedExtensions = /(\.csv|\.xlsx|\.xls)$/i;
+            if (!allowedExtensions.exec(file.name)) {
+                showNotificationAlert('กรุณาอัพโหลดไฟล์ที่มีนามสกุล .csv, .xlsx หรือ .xls เท่านั้น');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('clearData', clearData); // เพิ่มค่า clearData ไปใน formData
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    //alert('อัปโหลดไฟล์เรียบร้อยแล้ว');
+                    showNotification('อัปโหลดไฟล์เรียบร้อยแล้ว');
+                   // fetchOrders();  // Re-fetch orders after uploading
+                } else {
+                    const errorMsg = await response.text();
+                    showNotificationAlert(`ล้มเหลวในการอัปโหลดไฟล์: ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('ข้อผิดพลาดในการอัปโหลดไฟล์:', error);
+                showNotificationAlert('ข้อผิดพลาดในการอัปโหลดไฟล์');
+            }
+            fetchOrders();
+        }
+
+
+
+        async function testAS400Connection() {
+            try {
+                const response = await fetch('/api/test-as400');
+                const result = await response.json();
+                if (result.success) {
+                    alert('เชื่อมต่อกับ AS400 สำเร็จ');
+                } else {
+                    alert('ไม่สามารถเชื่อมต่อกับ AS400: ' + result.error);
+                }
+            } catch (error) {
+                console.error('ข้อผิดพลาด:', error);
+                alert('ไม่สามารถเชื่อมต่อกับ AS400');
+            }
+        }
+
+        async function sendDataToAS400() {
+        try {
+            const response = await fetch('/api/send-as400', {
+            method: 'POST'
+            });
+
+            if (response.ok) {
+            showNotification('ส่งข้อมูลไปยัง AS400 เรียบร้อยแล้ว');
+            } else {
+            const errorText = await response.text();
+            showNotificationAlert('ล้มเหลวในการส่งข้อมูล: ' + errorText);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('ข้อผิดพลาดในการส่งข้อมูลไปยัง AS400');
+        }
+        }
+
+        //การเรียกใช้งานไฟล์ .exe ผ่าน Node.js
+        async function triggerCSharpApp() {
+            if (!hasData) {
+                showNotificationAlert('ไม่พบข้อมูลในตาราง');
+                return;
+            }
+
+            if (hasErrors) {
+                showNotificationAlert('ข้อมูลบางรายการไม่ถูกต้อง กรุณาตรวจสอบข้อมูลก่อนส่งไปยัง AS400');
+                return;
+            }
+
+            try {
+
+                // แสดงข้อความแจ้งเตือนตรงกลางด้านบน
+                showNotification('กำลังส่ง กรุณารอสักครู่...');
+                const response = await fetch('/api/run-csharp-app', { method: 'POST' });
+                const result = await response.json();
+                showNotification(result.message);
+               // alert(result.message);
+            } catch (error) {
+                alert('ข้อผิดพลาดในการรันแอปพลิเคชัน: ' + error);
+            }
+            fetchOrders();
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.left = '50%';
+            notification.style.transform = 'translateX(-50%)';  // เพื่อให้ div อยู่ตรงกลาง
+            notification.style.backgroundColor = '#007bff';
+            notification.style.color = '#fff';
+            notification.style.padding = '10px';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '1000';
+            notification.style.fontSize = '16px';
+            notification.style.boxShadow = '0px 4px 6px rgba(0, 0, 0, 0.1)'; // เพิ่มเงา
+            document.body.appendChild(notification);
+
+            // ลบข้อความหลังจาก 3 วินาที
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function showNotificationAlert(message) {
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.left = '50%';
+            notification.style.transform = 'translateX(-50%)';  // เพื่อให้ div อยู่ตรงกลาง
+            notification.style.backgroundColor = '#c20909';
+            notification.style.color = '#fff';
+            notification.style.padding = '10px';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '1000';
+            notification.style.fontSize = '16px';
+            notification.style.boxShadow = '0px 4px 6px rgba(0, 0, 0, 0.1)'; // เพิ่มเงา
+            document.body.appendChild(notification);
+
+            // ลบข้อความหลังจาก 3 วินาที
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+
+
+        function showEditOrderModal(order, row) {
+            selectedOrderId = order.order_id;
+            selectedId = order.sku_id;
+            selectedRow = row;
+            console.log('order: === ', order);
+            console.log('selectedId: === ', selectedId);
+
+            // กรอกข้อมูลลงใน popup
+            document.getElementById('editCreatedTime').value = new Date(order.created_time).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('editBuyerUsername').value = order.buyer_username;
+            document.getElementById('editOrderId').value = order.order_id;
+            document.getElementById('editOrderStatus').value = order.order_status;
+            document.getElementById('editSellerSku').value = order.seller_sku;
+            document.getElementById('editProductName').value = order.product_name;
+            document.getElementById('editQuantity').value = order.quantity;
+            document.getElementById('editSkuUnitOriginalPrice').value = order.sku_unit_original_price;
+            document.getElementById('editSkuSellerDiscount').value = order.sku_seller_discount;
+            document.getElementById('editSkuSubtotalAfterDiscount').value = order.sku_subtotal_after_discount;
+            document.getElementById('editDetailAddress').value = order.detail_address;
+            document.getElementById('editProvince').value = order.province;
+            document.getElementById('editZipcode').value = order.zipcode;
+
+            // แสดง modal
+            const editOrderModal = new bootstrap.Modal(document.getElementById('editOrderModal'));
+            editOrderModal.show();
+        }
+
+        function saveOrderChanges() {
+            const buyerUsername = document.getElementById('editBuyerUsername').value;
+            const sellerSku = document.getElementById('editSellerSku').value;
+            const productName = document.getElementById('editProductName').value;
+            const quantity = document.getElementById('editQuantity').value;
+            const skuUnitOriginalPrice = document.getElementById('editSkuUnitOriginalPrice').value;
+            const skuSellerDiscount = document.getElementById('editSkuSellerDiscount').value;
+            const skuSubtotalAfterDiscount = document.getElementById('editSkuSubtotalAfterDiscount').value;
+            const detail_address = document.getElementById('editDetailAddress').value;
+            const province = document.getElementById('editProvince').value;
+            const zipcode = document.getElementById('editZipcode').value;
+
+            // ตรวจสอบว่าฟิลด์ใดถูกแก้ไข
+            const updates = {};
+            if (buyerUsername !== selectedRow.querySelector('[data-field="buyer_username"]').innerText) {
+                updates.buyer_username = buyerUsername;
+            }
+            if (detail_address !== selectedRow.querySelector('[data-field="detail_address"]').innerText) {
+                updates.detail_address = detail_address;
+            }
+            if (province !== selectedRow.querySelector('[data-field="province"]').innerText) {
+                updates.province = province;
+            }
+            if (zipcode !== selectedRow.querySelector('[data-field="zipcode"]').innerText) {
+                updates.zipcode = zipcode;
+            }
+            if (sellerSku !== selectedRow.querySelector('[data-field="seller_sku"]').innerText) {
+                updates.seller_sku = sellerSku;
+            }
+            if (productName !== selectedRow.querySelector('[data-field="product_name"]').innerText) {
+                updates.product_name = productName;
+            }
+            if (quantity !== selectedRow.querySelector('[data-field="quantity"]').innerText) {
+                updates.quantity = quantity;
+            }
+            if (skuUnitOriginalPrice !== selectedRow.querySelector('[data-field="sku_unit_original_price"]').innerText) {
+                updates.sku_unit_original_price = skuUnitOriginalPrice;
+            }
+            if (skuSellerDiscount !== selectedRow.querySelector('[data-field="sku_seller_discount"]').innerText) {
+                updates.sku_seller_discount = skuSellerDiscount;
+            }
+            if (skuSubtotalAfterDiscount !== selectedRow.querySelector('[data-field="sku_subtotal_after_discount"]').innerText) {
+                updates.sku_subtotal_after_discount = skuSubtotalAfterDiscount;
+            }
+
+            // ส่งข้อมูลที่อัปเดตไปยังเซิร์ฟเวอร์
+            if (Object.keys(updates).length > 0) {
+                fetch(`/api/update-order/${selectedOrderId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        updates: updates, // ข้อมูลที่ต้องการอัปเดต
+                        selectedId: selectedId  // ส่ง selectedId เพิ่มเติม
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // อัปเดตข้อมูลในตาราง
+                        if (updates.buyer_username) selectedRow.querySelector('[data-field="buyer_username"]').innerText = buyerUsername;
+                        if (updates.detail_address) selectedRow.querySelector('[data-field="detail_address"]').innerText = detail_address;
+                        if (updates.province) selectedRow.querySelector('[data-field="province"]').innerText = province;
+                        if (updates.zipcode) selectedRow.querySelector('[data-field="zipcode"]').innerText = zipcode;
+                        if (updates.seller_sku) selectedRow.querySelector('[data-field="seller_sku"]').innerText = sellerSku;
+                        if (updates.product_name) selectedRow.querySelector('[data-field="product_name"]').innerText = productName;
+                        if (updates.quantity) selectedRow.querySelector('[data-field="quantity"]').innerText = quantity;
+                        if (updates.sku_unit_original_price) selectedRow.querySelector('[data-field="sku_unit_original_price"]').innerText = skuUnitOriginalPrice;
+                        if (updates.sku_seller_discount) selectedRow.querySelector('[data-field="sku_seller_discount"]').innerText = skuSellerDiscount;
+                        if (updates.sku_subtotal_after_discount) selectedRow.querySelector('[data-field="sku_subtotal_after_discount"]').innerText = skuSubtotalAfterDiscount;
+
+                        alert('บันทึกการแก้ไขเรียบร้อยแล้ว');
+                        fetchOrders();
+                    } else {
+                        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+                    }
+                    console.log('Response:', data);
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+                });
+            }
+
+            const editOrderModal = bootstrap.Modal.getInstance(document.getElementById('editOrderModal'));
+            editOrderModal.hide();
+        }
+
+
+
+
+
+        // Initial fetch
+        fetchOrders();
+    </script>
+    <!-- Add Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
