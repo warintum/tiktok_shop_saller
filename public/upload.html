@@ -152,7 +152,7 @@
                 <!--<button class="btn btn-upload w-100" onclick="testAS400Connection()">
                     <i class='bx bx-server'></i> ทดสอบการเชื่อมต่อกับ AS400
                   </button>-->
-                  <button class="btn btn-upload w-100" onclick="triggerCSharpApp()">
+                  <button class="btn btn-upload w-100" onclick="sendDataToAS400()">
                     <i class='bx bx-server'></i> ส่งข้อมูลไปยัง AS400
                   </button>
                   <!-- <div class="mt-2 ms-2">
@@ -663,7 +663,7 @@
         }
 
         //การเรียกใช้งานไฟล์ .exe ผ่าน Node.js
-        async function triggerCSharpApp() {
+        async function sendDataToAS400() {
             if (!hasData) {
                 showNotificationAlert('ไม่พบข้อมูลในตาราง');
                 return;
@@ -675,15 +675,21 @@
             }
 
             try {
+                showNotification('กำลังส่งข้อมูลไปยัง AS400 กรุณารอสักครู่...');
+                const response = await fetch('/api/send-as400', {
+                    method: 'POST'
+                });
 
-                // แสดงข้อความแจ้งเตือนตรงกลางด้านบน
-                showNotification('กำลังส่ง กรุณารอสักครู่...');
-                const response = await fetch('/api/run-csharp-app', { method: 'POST' });
-                const result = await response.json();
-                showNotification(result.message);
-               // alert(result.message);
+                if (response.ok) {
+                    const result = await response.text();
+                    showNotification(result);
+                } else {
+                    const errorText = await response.text();
+                    showNotificationAlert('ล้มเหลวในการส่งข้อมูล: ' + errorText);
+                }
             } catch (error) {
-                alert('ข้อผิดพลาดในการรันแอปพลิเคชัน: ' + error);
+                console.error('Error:', error);
+                alert('ข้อผิดพลาดในการส่งข้อมูลไปยัง AS400');
             }
             fetchOrders();
         }

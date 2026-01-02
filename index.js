@@ -9,8 +9,8 @@ const orderRoutes = require('./routes/order');
 const orderTmpRoutes = require('./routes/ordertmp');
 const as400Routes = require('./routes/as400Routes');
 const uploadViewRoutes = require('./routes/uploadview');
-const runCsharpRoutes = require('./routes/runCsharp');
-const loginRoutes = require('./routes/loginRoutes'); 
+
+const loginRoutes = require('./routes/loginRoutes');
 const updateTmpRoutes = require('./routes/updateTmpRoutes');
 
 const app = express();
@@ -74,7 +74,7 @@ app.use('/api', orderRoutes);
 app.use('/api', orderTmpRoutes);
 app.use('/api', as400Routes);
 app.use('/api', uploadViewRoutes);
-app.use('/api', runCsharpRoutes);
+
 app.use('/api', loginRoutes);
 app.use('/api', updateTmpRoutes);
 
