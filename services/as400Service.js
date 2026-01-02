@@ -2,17 +2,20 @@ const odbc = require('odbc');
 
 function getAS400Config() {
     return {
-        //dsn: 'LIBBPCSCDF',
-        dsn: 'TESTF',
-        uid: 'ssa',
-        pwd: 'ssa',
-        ccsid: '1208'
+        dsn: process.env.AS400_DSN,
+        uid: process.env.AS400_UID,
+        pwd: process.env.AS400_PWD,
+        ccsid: process.env.AS400_CCSID || '1208' // คืนค่าเป็น 1208
     };
+
+
 }
 
 function createConnectionString(config) {
     return `Dsn=${config.dsn};uid=${config.uid};pwd=${config.pwd};CCSID=${config.ccsid || '1208'}`;
 }
+
+
 
 async function connectToAS400() {
     try {

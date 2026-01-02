@@ -47,24 +47,28 @@ exports.sendDataToAS400 = async (req, res) => {
       const ohtel = ''; // C# sends empty string
 
       // Address Processing
-      let detailAddr = row.detail_address || '';
-      if (detailAddr.indexOf('*') !== -1) {
-        detailAddr = detailAddr.replace(/ /g, '').trim().substring(0, 10);
+      let rawDetailAddr = (row.detail_address || '').trim();
+      let detailAddr = rawDetailAddr;
+      let isMasked = false;
+
+      if (rawDetailAddr.includes('*')) {
+        detailAddr = '**********'; // ปรับลดให้เหลือ 10 หลักตามสั่ง
+        isMasked = true;
       }
+
       let district = row.district || '';
       let province = row.province || '';
 
-      // C# logic: if province contains 'กรุงเทพ', district = 'เขต'+district, else 'อ.'+district, 'จ.'+province
-      // But the provided C# code commented this out? 
-      // "/*if (province.Contains("กรุงเทพ")) ... */"
-      // So we will stick to the active code which just does ConThaiAS400(district) and ConThaiAS400(province)
-
       // ProcessOHAD combines address parts and formats length
-      let ohad1 = processOHAD(detailAddr, district, province);
-      ohad1 = convertThaiToAS400(ohad1);
+      let rawOhad1 = processOHAD(detailAddr, district, province);
 
-      let ohamp = convertThaiToAS400(district);
-      let ohpov = convertThaiToAS400(province);
+      // ถ้าเป็นข้อมูลที่ถูก Mask (มี *) ไม่ต้องผ่าน convertThaiToAS400 เพื่อป้องกัน Error
+      let ohad1 = isMasked ? rawOhad1 : convertThaiToAS400(rawOhad1);
+
+      let ohamp = isMasked ? district.substring(0, 30) : convertThaiToAS400(district.substring(0, 30));
+      let ohpov = isMasked ? province.substring(0, 30) : convertThaiToAS400(province.substring(0, 30));
+
+
 
       let ohzip = row.zipcode || '';
       if (ohzip.indexOf('*') !== -1) ohzip = '00000';
@@ -123,7 +127,12 @@ exports.sendDataToAS400 = async (req, res) => {
           }
 
           const olitm = sellerSku;
-          const oldes = convertThaiToAS400(productName).substring(0, 30);
+
+          // ถ้า Order หรือชื่อสินค้ามีเครื่องหมาย * ให้ข้ามการแปลงภาษาไทย (Manual Mapping) เพื่อไม่ให้เกิด Error CWBNL0107
+          const isItemMasked = productName.includes('*');
+          const oldes = (isMasked || isItemMasked) ? productName.substring(0, 30) : convertThaiToAS400(productName).substring(0, 30);
+
+
           const olumr = productUMR;
           const olqty = quantity;
           const ollst = unitPrice.toFixed(2);

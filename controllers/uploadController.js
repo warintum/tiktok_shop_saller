@@ -20,6 +20,7 @@ exports.uploadCSV = async (req, res) => {
         'SKU Unit Original Price', 'SKU Subtotal Before Discount', 'SKU Platform Discount',
         'SKU Seller Discount', 'SKU Subtotal After Discount', 'Shipping Fee After Discount',
         'Original Shipping Fee', 'Shipping Fee Seller Discount', 'Shipping Fee Platform Discount',
+        'Payment platform discount', // เพิ่มคอลัมน์ใหม่จาก TikTok
         'Taxes', 'Small Order Fee', 'Order Amount', 'Order Refund Amount', 'Created Time', 'Paid Time',
         'RTS Time', 'Shipped Time', 'Delivered Time', 'Cancelled Time', 'Cancel By', 'Cancel Reason',
         'Fulfillment Type', 'Warehouse Name', 'Tracking ID', 'Delivery Option', 'Shipping Provider Name',
@@ -27,6 +28,11 @@ exports.uploadCSV = async (req, res) => {
         'District', 'Detail Address', 'Additional address information', 'Payment Method', 'Weight(kg)',
         'Product Category', 'Package ID', 'Seller Note', 'Checked Status', 'Checked Marked by'
     ];
+
+    const requiredHeaders = [
+        'Order ID', 'Order Status', 'Seller SKU', 'Product Name', 'Quantity', 'Order Amount'
+    ];
+
 
     const results = [];
     let headersVerified = false;
@@ -49,23 +55,24 @@ exports.uploadCSV = async (req, res) => {
                 .pipe(csv())
                 .on('headers', (headers) => {
                     headers[0] = headers[0].replace(/^\uFEFF/, ''); // ลบ BOM
-                    headersVerified = expectedHeaders.every((header, index) => header === headers[index]);
+                    // ตรวจสอบว่ามีคอลัมน์ที่จำเป็นครบถ้วนหรือไม่
+                    headersVerified = requiredHeaders.every(header => headers.includes(header));
+
                     if (!headersVerified) {
-                        // ใช้ res.status แทนการโยน error
-                        fs.unlinkSync(filePath); // ลบไฟล์ CSV ที่อัปโหลดหาก headers ไม่ตรงกัน
-                        return res.status(400).send('Headers ในไฟล์ CSV ไม่ตรงกับรูปแบบ');
+                        fs.unlinkSync(filePath);
+                        return res.status(400).send('Headers ในไฟล์ CSV ไม่ถูกต้อง หรือขาดคอลัมน์ที่จำเป็น');
                     }
                 })
                 .on('data', (data) => {
-                  if (headersVerified) {
-                      processRow(data);
-                  }
+                    if (headersVerified) {
+                        processRow(data);
+                    }
                 })
                 .on('end', async () => {
-                  if (headersVerified) {
-                    handleInsertData(res, results, filePath, uploadDate);
-                  }
-                }) 
+                    if (headersVerified) {
+                        handleInsertData(res, results, filePath, uploadDate);
+                    }
+                })
                 .on('error', (error) => {
                     console.error(`Error processing CSV: ${error.message}`);
                     fs.unlinkSync(filePath); // ลบไฟล์ที่อัปโหลดหากเกิดข้อผิดพลาด
@@ -86,13 +93,14 @@ exports.uploadCSV = async (req, res) => {
             const jsonData = xlsx.utils.sheet_to_json(worksheet, { defval: '', header: 1 });
 
             const headers = jsonData[0];
-            console.log('headers:', headers);
+            console.log('headers from file:', headers);
 
-            headersVerified = expectedHeaders.every((header, index) => header === headers[index]);
+            // ตรวจสอบว่ามีคอลัมน์ที่จำเป็นครบถ้วนหรือไม่
+            headersVerified = requiredHeaders.every(header => headers.includes(header));
 
             if (!headersVerified) {
                 fs.unlinkSync(filePath);
-                return res.status(400).send('Headers ในไฟล์ Excel ไม่ตรงกับรูปแบบ');
+                return res.status(400).send('Headers ในไฟล์ Excel ไม่ถูกต้อง หรือขาดคอลัมน์ที่จำเป็น');
             }
 
             jsonData.slice(2).forEach((row) => {
@@ -120,19 +128,28 @@ exports.uploadCSV = async (req, res) => {
             return; // ป้องกันการประมวลผลถ้า headers ไม่ถูกต้อง
         }
         // ลบ 'THB' ออกจากค่าที่ควรเป็นตัวเลข
-        data['SKU Unit Original Price'] = parseFloat(data['SKU Unit Original Price'].replace('THB', '').trim());
-        data['SKU Subtotal Before Discount'] = parseFloat(data['SKU Subtotal Before Discount'].replace('THB', '').trim());
-        data['SKU Platform Discount'] = parseFloat(data['SKU Platform Discount'].replace('THB', '').trim());
-        data['SKU Seller Discount'] = parseFloat(data['SKU Seller Discount'].replace('THB', '').trim());
-        data['SKU Subtotal After Discount'] = parseFloat(data['SKU Subtotal After Discount'].replace('THB', '').trim());
-        data['Shipping Fee After Discount'] = parseFloat(data['Shipping Fee After Discount'].replace('THB', '').trim());
-        data['Original Shipping Fee'] = parseFloat(data['Original Shipping Fee'].replace('THB', '').trim());
-        data['Shipping Fee Seller Discount'] = parseFloat(data['Shipping Fee Seller Discount'].replace('THB', '').trim());
-        data['Shipping Fee Platform Discount'] = parseFloat(data['Shipping Fee Platform Discount'].replace('THB', '').trim());
-        data['Taxes'] = parseFloat(data['Taxes'].replace('THB', '').trim());
-        data['Small Order Fee'] = parseFloat(data['Small Order Fee'].replace('THB', '').trim());
-        data['Order Amount'] = parseFloat(data['Order Amount'].replace('THB', '').trim());
-        data['Order Refund Amount'] = parseFloat(data['Order Refund Amount'].replace('THB', '').trim());
+        // ลบ 'THB' ออกจากค่าที่ควรเป็นตัวเลข และตรวจสอบว่าคอลัมน์มีตัวตนหรือไม่
+        const cleanPrice = (val) => {
+            if (val === undefined || val === null || val === '') return 0;
+            if (typeof val === 'string') {
+                return parseFloat(val.replace('THB', '').replace(/,/g, '').trim()) || 0;
+            }
+            return parseFloat(val) || 0;
+        };
+
+        data['SKU Unit Original Price'] = cleanPrice(data['SKU Unit Original Price']);
+        data['SKU Subtotal Before Discount'] = cleanPrice(data['SKU Subtotal Before Discount']);
+        data['SKU Platform Discount'] = cleanPrice(data['SKU Platform Discount']);
+        data['SKU Seller Discount'] = cleanPrice(data['SKU Seller Discount']);
+        data['SKU Subtotal After Discount'] = cleanPrice(data['SKU Subtotal After Discount']);
+        data['Shipping Fee After Discount'] = cleanPrice(data['Shipping Fee After Discount']);
+        data['Original Shipping Fee'] = cleanPrice(data['Original Shipping Fee']);
+        data['Shipping Fee Seller Discount'] = cleanPrice(data['Shipping Fee Seller Discount']);
+        data['Shipping Fee Platform Discount'] = cleanPrice(data['Shipping Fee Platform Discount']);
+        data['Taxes'] = cleanPrice(data['Taxes']);
+        data['Small Order Fee'] = cleanPrice(data['Small Order Fee']);
+        data['Order Amount'] = cleanPrice(data['Order Amount']);
+        data['Order Refund Amount'] = cleanPrice(data['Order Refund Amount']);
 
         // ตรวจสอบและแปลงค่า timestamp ให้เป็น null ถ้าเป็นช่องว่าง
         /*data['Created Time'] = data['Created Time'].trim() === '' ? null : data['Created Time'];
